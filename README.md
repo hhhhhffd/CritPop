@@ -1,22 +1,75 @@
-# Crit Pop 1.0.0
+<div align="center">
+<h1>Crit Pop</h1>
+<hr>
+<p><strong>3 signals in one overlay: attempted hits, server confirmation, animated phrases.</strong></p>
+<p>
+<img src="https://img.shields.io/badge/Minecraft-1.21.11-62B47A?style=flat-square&logo=minecraft" alt="Minecraft 1.21.11">
+<img src="https://img.shields.io/badge/Fabric%20Loader-0.18.4-DBD0B4?style=flat-square&logo=fabric" alt="Fabric Loader 0.18.4">
+<img src="https://img.shields.io/badge/Java-21-ED8B00?style=flat-square&logo=openjdk" alt="Java 21">
+<img src="https://img.shields.io/badge/Gradle-9.2.1-02303A?style=flat-square&logo=gradle" alt="Gradle 9.2.1">
+</p>
+<p>
+<a href="https://github.com/hhhhhffd/CritPop/releases"><img src="https://img.shields.io/github/v/release/hhhhhffd/CritPop?style=flat-square" alt="Latest release"></a>
+<a href="https://github.com/hhhhhffd/CritPop/releases"><img src="https://img.shields.io/github/downloads/hhhhhffd/CritPop/total?style=flat-square" alt="Downloads"></a>
+<a href="LICENSE"><img src="https://img.shields.io/github/license/hhhhhffd/CritPop?style=flat-square" alt="MIT license"></a>
+</p>
+<p><a href="https://github.com/hhhhhffd/CritPop/releases">Download</a> · <a href="#architecture">Architecture</a> · <a href="#build">Build</a></p>
+<img src="docs/media/preview.webp" alt="Crit Pop in-game preview">
+</div>
 
-Crit Pop adds a colorful animated phrase when a melee critical hit you land is
-confirmed by the Minecraft server. Phrases scale in, rise and fade, with varied
-colors and positions in the upper screen. The effect never covers the crosshair.
-The built-in English phrase list and the eight placement regions are shuffled
-without consecutive repeats.
+## Overview
 
-## Install
+Crit Pop is a client-side Minecraft mod that displays colorful animated phrases for confirmed melee critical hits. Phrases scale in, rise and fade in varied upper-screen positions without covering the crosshair. The built-in English phrases and eight placement regions are shuffled without consecutive repeats.
 
-Install Fabric Loader 0.18.4 or later for Minecraft Java **1.21.11** and drop the
-release JAR in the client’s `mods` folder. It works with the integrated server
-and ordinary vanilla multiplayer. The server does not need this mod. Crit Pop
-itself does not need Fabric API.
+## Technical Stack
 
-For in-game settings, install optional Mod Menu 17 and open
-**Mods → Crit Pop → Configure**. You can turn off the effect, edit/add/remove
-phrases, or reset the default list. Use **Done** to save. Without Mod Menu you
-can edit `config/critpop.json` while Minecraft is closed:
+| Component | Version / role |
+| --- | --- |
+| Minecraft Java | 1.21.11 |
+| Fabric Loader | 0.18.4 or later |
+| Java | 21 or later; build toolchain 21 |
+| Fabric Loom / Gradle | 1.13.6 / 9.2.1 |
+| Mod Menu | 17 or later, optional settings UI; compiled against 17.0.1 |
+
+## Architecture
+
+```mermaid
+flowchart LR
+    A[Local attack attempt] --> T[CritTracker]
+    D[Server damage event] --> T
+    S[Critical attack sound] --> T
+    C[Target critical animation] --> T
+    T -->|confirmed| O[PopOverlay]
+    P[Local phrase configuration] --> O
+    O --> H[HUD rendering]
+```
+
+- **Correlated evidence:** the tracker requires a local attempt against the living target, a vanilla damage event with the local player as both direct and causing entity, a matching critical-attack sound near the player, and the target's critical animation.
+- **Conservative attribution:** misses, ordinary hits, magic-only critical animations, other players' damage, and ambiguous or incomplete sequences do not produce a pop.
+- **Client-local presentation:** phrases and placement are selected locally; no chat messages or custom packets are sent.
+
+> [!NOTE]
+> Modified servers may suppress or replace vanilla effects. Damage during an invulnerability window can occur without a new damage event, so some genuine hits are deliberately skipped.
+
+## Project Structure
+
+```text
+.
+├── src/client/          # Tracking, configuration, rendering and mixins
+├── src/main/            # Fabric metadata and mixin declarations
+├── tests/               # Standalone tracker and placement checks
+├── docs/media/          # In-game preview
+├── build.gradle         # Loom build configuration
+└── gradle.properties    # Minecraft and tool versions
+```
+
+## Install and configure
+
+1. Install Fabric Loader 0.18.4 or later for Minecraft Java 1.21.11 and Java 21 or later.
+2. Download the [release JAR](https://github.com/hhhhhffd/CritPop/releases) and place it in the client's `mods` folder. Fabric API is not required. The server does not need the mod; integrated servers and ordinary vanilla multiplayer work.
+3. Optionally install Mod Menu 17 and use **Mods → Crit Pop → Configure** to enable or disable the effect, add, edit or remove phrases, or reset the defaults. Select **Done** to save.
+
+Alternatively, edit `config/critpop.json` while Minecraft is closed. This is an example, not the complete default phrase list:
 
 ```json
 {
@@ -25,27 +78,25 @@ can edit `config/critpop.json` while Minecraft is closed:
 }
 ```
 
-An empty list disables phrases. Up to 64 phrases of at most 48 characters are
-stored. Text remains on your client; no chat messages or custom packets are sent.
-
-## What counts?
-
-The client must have actually attempted to hit that living entity. Crit Pop then
-requires a vanilla damage event with your player as the direct and causing
-entity, the matching critical-attack sound near your position, and the game's
-critical animation on the same target. It does not show for a miss, an
-ordinary hit, a magic-only critical animation, or another player's damage.
-It deliberately skips ambiguous or incomplete sequences. For example, modified
-servers may suppress or replace vanilla effects, and invulnerability-window
-damage can be applied without sending a new damage event.
+An empty list disables phrases. At most 64 phrases of 48 characters each are stored; text stays on the client.
 
 ## Build
 
-Use Java 21 and run `./gradlew build` (`gradlew.bat build` on Windows).
+With Java 21, run `./gradlew build` (Windows: `gradlew.bat build`).
 
-To run the attribution and placement checks:
+<details><summary>Standalone attribution and placement checks</summary>
 
 ```sh
 javac -d build/critpop-tests src/client/java/com/critpop/CritTracker.java src/client/java/com/critpop/PopPlacement.java tests/CritTrackerTest.java
 java -cp build/critpop-tests CritTrackerTest
 ```
+</details>
+
+## Links
+
+- [Releases and downloads](https://github.com/hhhhhffd/CritPop/releases)
+- [Source repository](https://github.com/hhhhhffd/CritPop)
+
+## License
+
+[MIT](LICENSE) © 2026 hhhhhffd.
