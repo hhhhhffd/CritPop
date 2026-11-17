@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "id": "critpop",
+  "version": "${version}",
+  "name": "Crit Pop",
+  "description": "Colorful animated phrases for your confirmed melee critical hits.",
+  "environment": "client",
+  "entrypoints": { "modmenu": ["com.critpop.ModMenuIntegration"] },
+  "suggests": { "modmenu": ">=17.0.0" },
+  "mixins": ["critpop.client.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "1.21.11",
+    "java": ">=21"
+  }
+}
